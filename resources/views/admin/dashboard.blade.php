@@ -25,10 +25,6 @@
     </div>
 @stop
 
-@section('css')
-    {{-- Extra CSS here --}}
-@stop
-
 @section('js')
     <script>
         console.log("AdminLTE dashboard loaded.");
