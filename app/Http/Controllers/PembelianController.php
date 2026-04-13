@@ -29,8 +29,8 @@ class PembelianController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('nama')->get();
-        $barangs = Barang::orderBy('nama')->get();
-        $nomor = Pembelian::generateNomor();
+        $barangs   = Barang::orderBy('nama')->get();
+        $nomor     = Pembelian::generateNomor();
 
         return view('admin.pembelian.create', compact('suppliers', 'barangs', 'nomor'));
     }
@@ -41,30 +41,35 @@ class PembelianController extends Controller
 
         DB::transaction(function () use ($data, $request) {
             $pembelian = Pembelian::create([
-                'nomor' => Pembelian::generateNomor(),
-                'tanggal' => $data['tanggal'],
+                'nomor'       => Pembelian::generateNomor(),
+                'tanggal'     => $data['tanggal'],
                 'supplier_id' => $data['supplier_id'],
-                'user_id' => $request->user()?->id,
-                'keterangan' => $data['keterangan'] ?? null,
-                'total' => 0,
+                'user_id'     => $request->user()?->id,
+                'keterangan'  => $data['keterangan'] ?? null,
+                'total'       => 0,
             ]);
 
             $total = 0;
+
             foreach ($data['items'] as $item) {
                 $subtotal = $item['qty'] * $item['harga'];
-                $total += $subtotal;
+                $total   += $subtotal;
 
                 $pembelian->details()->create([
                     'barang_id' => $item['barang_id'],
-                    'qty' => $item['qty'],
-                    'harga' => $item['harga'],
-                    'subtotal' => $subtotal,
+                    'qty'       => $item['qty'],
+                    'harga'     => $item['harga'],
+                    'subtotal'  => $subtotal,
                 ]);
 
-                // Stok naik + HPP = harga pembelian terbaru
                 $barang = Barang::lockForUpdate()->find($item['barang_id']);
+                $barang->harga_pokok = $this->hitungHPPRataRata(
+                    stokLama:  $barang->stok,
+                    hppLama:   (float) $barang->harga_pokok,
+                    qtyMasuk:  $item['qty'],
+                    hargaBeli: $item['harga'],
+                );
                 $barang->stok += $item['qty'];
-                $barang->harga_pokok = $item['harga'];
                 $barang->save();
             }
 
@@ -93,7 +98,7 @@ class PembelianController extends Controller
 
         $pembelian->load('details');
         $suppliers = Supplier::orderBy('nama')->get();
-        $barangs = Barang::orderBy('nama')->get();
+        $barangs   = Barang::orderBy('nama')->get();
 
         return view('admin.pembelian.edit', compact('pembelian', 'suppliers', 'barangs'));
     }
@@ -109,35 +114,51 @@ class PembelianController extends Controller
         $data = $this->validatePembelian($request);
 
         DB::transaction(function () use ($data, $pembelian) {
-            // Reverse old stok
             foreach ($pembelian->details as $detail) {
                 $barang = Barang::lockForUpdate()->find($detail->barang_id);
-                $barang->stok -= $detail->qty;
-                $barang->save();
+                if ($barang) {
+                    $stokTotal = $barang->stok;
+                    $hppSebelum = $this->reverseHPP(
+                        hppWA:      (float) $barang->harga_pokok,
+                        stokTotal:  $stokTotal,
+                        qtyMasuk:   $detail->qty,
+                        hargaBeli:  (float) $detail->harga,
+                    );
+                    $barang->stok       -= $detail->qty;
+                    $barang->harga_pokok = max(0, $hppSebelum);
+                    $barang->save();
+                }
             }
+
             $pembelian->details()->delete();
 
             $pembelian->update([
-                'tanggal' => $data['tanggal'],
+                'tanggal'     => $data['tanggal'],
                 'supplier_id' => $data['supplier_id'],
-                'keterangan' => $data['keterangan'] ?? null,
+                'keterangan'  => $data['keterangan'] ?? null,
             ]);
 
             $total = 0;
+
             foreach ($data['items'] as $item) {
                 $subtotal = $item['qty'] * $item['harga'];
-                $total += $subtotal;
+                $total   += $subtotal;
 
                 $pembelian->details()->create([
                     'barang_id' => $item['barang_id'],
-                    'qty' => $item['qty'],
-                    'harga' => $item['harga'],
-                    'subtotal' => $subtotal,
+                    'qty'       => $item['qty'],
+                    'harga'     => $item['harga'],
+                    'subtotal'  => $subtotal,
                 ]);
 
                 $barang = Barang::lockForUpdate()->find($item['barang_id']);
+                $barang->harga_pokok = $this->hitungHPPRataRata(
+                    stokLama:  $barang->stok,
+                    hppLama:   (float) $barang->harga_pokok,
+                    qtyMasuk:  $item['qty'],
+                    hargaBeli: $item['harga'],
+                );
                 $barang->stok += $item['qty'];
-                $barang->harga_pokok = $item['harga'];
                 $barang->save();
             }
 
@@ -161,6 +182,7 @@ class PembelianController extends Controller
                 if ($barang) {
                     $barang->stok -= $detail->qty;
                     $barang->save();
+
                 }
             }
             $pembelian->delete();
@@ -171,16 +193,51 @@ class PembelianController extends Controller
             ->with('success', 'Pembelian berhasil dihapus.');
     }
 
+    private function hitungHPPRataRata(
+        int   $stokLama,
+        float $hppLama,
+        int   $qtyMasuk,
+        float $hargaBeli
+    ): float {
+        if ($stokLama <= 0) {
+            return $hargaBeli;
+        }
+
+        $nilaiLama  = $stokLama * $hppLama;
+        $nilaiMasuk = $qtyMasuk * $hargaBeli;
+        $stokBaru   = $stokLama + $qtyMasuk;
+
+        return ($nilaiLama + $nilaiMasuk) / $stokBaru;
+    }
+
+    private function reverseHPP(
+        float $hppWA,
+        int   $stokTotal,
+        int   $qtyMasuk,
+        float $hargaBeli
+    ): float {
+        $stokSebelum = $stokTotal - $qtyMasuk;
+
+        if ($stokSebelum <= 0) {
+            return 0;
+        }
+
+        $nilaiTotal = $hppWA * $stokTotal;
+        $nilaiMasuk = $hargaBeli * $qtyMasuk;
+
+        return ($nilaiTotal - $nilaiMasuk) / $stokSebelum;
+    }
+
     private function validatePembelian(Request $request): array
     {
         return $request->validate([
-            'tanggal' => ['required', 'date'],
-            'supplier_id' => ['required', 'exists:suppliers,id'],
-            'keterangan' => ['nullable', 'string'],
-            'items' => ['required', 'array', 'min:1'],
+            'tanggal'           => ['required', 'date'],
+            'supplier_id'       => ['required', 'exists:suppliers,id'],
+            'keterangan'        => ['nullable', 'string'],
+            'items'             => ['required', 'array', 'min:1'],
             'items.*.barang_id' => ['required', 'exists:barangs,id'],
-            'items.*.qty' => ['required', 'integer', 'min:1'],
-            'items.*.harga' => ['required', 'numeric', 'min:0'],
+            'items.*.qty'       => ['required', 'integer', 'min:1'],
+            'items.*.harga'     => ['required', 'numeric', 'min:0'],
         ], [
             'items.required' => 'Minimal harus ada 1 barang dalam pembelian.',
         ]);
