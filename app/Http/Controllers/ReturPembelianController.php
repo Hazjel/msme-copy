@@ -6,6 +6,7 @@ use App\Models\Barang;
 use App\Models\Pembelian;
 use App\Models\PembelianDetail;
 use App\Models\ReturPembelian;
+use App\Models\ReturPembelianDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -85,9 +86,16 @@ class ReturPembelianController extends Controller
                 }
 
                 $qtyRetur = (int) $item['qty'];
-                if ($qtyRetur > $detail->qty) {
+
+                // Hitung total qty yang sudah pernah diretur sebelumnya untuk detail ini
+                $totalSudahDiretur = ReturPembelianDetail::where('pembelian_detail_id', $detail->id)
+                    ->sum('qty');
+
+                $sisaBisaDiretur = $detail->qty - $totalSudahDiretur;
+
+                if ($qtyRetur > $sisaBisaDiretur) {
                     throw ValidationException::withMessages([
-                        'items' => "Qty retur melebihi qty pembelian untuk barang {$detail->barang->nama}.",
+                        'items' => "Qty retur melebihi sisa yang bisa diretur untuk barang {$detail->barang->nama}. Sisa: {$sisaBisaDiretur}.",
                     ]);
                 }
 
