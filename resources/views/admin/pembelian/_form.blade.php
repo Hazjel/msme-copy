@@ -33,7 +33,7 @@
         <div class="form-group">
             <label>Tanggal <span class="text-danger">*</span></label>
             <input type="date" name="tanggal" class="form-control"
-                value="{{ old('tanggal', isset($pembelian) ? $pembelian->tanggal->format('Y-m-d') : now()->format('Y-m-d')) }}"
+                value="{{ old('tanggal', $pembelian->tanggal?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                 required>
         </div>
     </div>
