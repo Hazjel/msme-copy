@@ -180,9 +180,15 @@ class PembelianController extends Controller
             foreach ($pembelian->details as $detail) {
                 $barang = Barang::lockForUpdate()->find($detail->barang_id);
                 if ($barang) {
-                    $barang->stok -= $detail->qty;
+                    $hppSebelum = $this->reverseHPP(
+                        hppWA:      (float) $barang->harga_pokok,
+                        stokTotal:  $barang->stok,
+                        qtyMasuk:   $detail->qty,
+                        hargaBeli:  (float) $detail->harga,
+                    );
+                    $barang->stok       -= $detail->qty;
+                    $barang->harga_pokok = max(0, $hppSebelum);
                     $barang->save();
-
                 }
             }
             $pembelian->delete();
