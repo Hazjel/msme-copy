@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
+use App\Models\BarangHppLog;
 use App\Models\Pembelian;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -63,14 +64,31 @@ class PembelianController extends Controller
                 ]);
 
                 $barang = Barang::lockForUpdate()->find($item['barang_id']);
-                $barang->harga_pokok = $this->hitungHPPRataRata(
-                    stokLama:  $barang->stok,
-                    hppLama:   (float) $barang->harga_pokok,
+                $hppLama = (float) $barang->harga_pokok;
+                $stokSebelum = $barang->stok;
+                $hppBaru = $this->hitungHPPRataRata(
+                    stokLama:  $stokSebelum,
+                    hppLama:   $hppLama,
                     qtyMasuk:  $item['qty'],
                     hargaBeli: $item['harga'],
                 );
+                $barang->harga_pokok = $hppBaru;
                 $barang->stok += $item['qty'];
                 $barang->save();
+
+                $this->logHpp(
+                    tanggal: $pembelian->tanggal,
+                    barangId: $barang->id,
+                    qty: $item['qty'],
+                    hargaBeli: (float) $item['harga'],
+                    hppLama: $hppLama,
+                    hppBaru: $hppBaru,
+                    stokSebelum: $stokSebelum,
+                    stokSetelah: $barang->stok,
+                    sumberType: 'pembelian',
+                    sumberId: $pembelian->id,
+                    keterangan: 'Pembelian ' . $pembelian->nomor,
+                );
             }
 
             $pembelian->update(['total' => $total]);
@@ -118,8 +136,9 @@ class PembelianController extends Controller
                 $barang = Barang::lockForUpdate()->find($detail->barang_id);
                 if ($barang) {
                     $stokTotal = $barang->stok;
+                    $hppLama = (float) $barang->harga_pokok;
                     $hppSebelum = $this->reverseHPP(
-                        hppWA:      (float) $barang->harga_pokok,
+                        hppWA:      $hppLama,
                         stokTotal:  $stokTotal,
                         qtyMasuk:   $detail->qty,
                         hargaBeli:  (float) $detail->harga,
@@ -127,6 +146,20 @@ class PembelianController extends Controller
                     $barang->stok       -= $detail->qty;
                     $barang->harga_pokok = max(0, $hppSebelum);
                     $barang->save();
+
+                    $this->logHpp(
+                        tanggal: $pembelian->tanggal,
+                        barangId: $barang->id,
+                        qty: -$detail->qty,
+                        hargaBeli: (float) $detail->harga,
+                        hppLama: $hppLama,
+                        hppBaru: (float) $barang->harga_pokok,
+                        stokSebelum: $stokTotal,
+                        stokSetelah: $barang->stok,
+                        sumberType: 'pembelian_update_reverse',
+                        sumberId: $pembelian->id,
+                        keterangan: 'Reverse update pembelian ' . $pembelian->nomor,
+                    );
                 }
             }
 
@@ -152,14 +185,31 @@ class PembelianController extends Controller
                 ]);
 
                 $barang = Barang::lockForUpdate()->find($item['barang_id']);
-                $barang->harga_pokok = $this->hitungHPPRataRata(
-                    stokLama:  $barang->stok,
-                    hppLama:   (float) $barang->harga_pokok,
+                $hppLama = (float) $barang->harga_pokok;
+                $stokSebelum = $barang->stok;
+                $hppBaru = $this->hitungHPPRataRata(
+                    stokLama:  $stokSebelum,
+                    hppLama:   $hppLama,
                     qtyMasuk:  $item['qty'],
                     hargaBeli: $item['harga'],
                 );
+                $barang->harga_pokok = $hppBaru;
                 $barang->stok += $item['qty'];
                 $barang->save();
+
+                $this->logHpp(
+                    tanggal: $pembelian->tanggal,
+                    barangId: $barang->id,
+                    qty: $item['qty'],
+                    hargaBeli: (float) $item['harga'],
+                    hppLama: $hppLama,
+                    hppBaru: $hppBaru,
+                    stokSebelum: $stokSebelum,
+                    stokSetelah: $barang->stok,
+                    sumberType: 'pembelian_update',
+                    sumberId: $pembelian->id,
+                    keterangan: 'Update pembelian ' . $pembelian->nomor,
+                );
             }
 
             $pembelian->update(['total' => $total]);
@@ -180,15 +230,31 @@ class PembelianController extends Controller
             foreach ($pembelian->details as $detail) {
                 $barang = Barang::lockForUpdate()->find($detail->barang_id);
                 if ($barang) {
+                    $hppLama = (float) $barang->harga_pokok;
+                    $stokSebelum = $barang->stok;
                     $hppSebelum = $this->reverseHPP(
-                        hppWA:      (float) $barang->harga_pokok,
-                        stokTotal:  $barang->stok,
+                        hppWA:      $hppLama,
+                        stokTotal:  $stokSebelum,
                         qtyMasuk:   $detail->qty,
                         hargaBeli:  (float) $detail->harga,
                     );
                     $barang->stok       -= $detail->qty;
                     $barang->harga_pokok = max(0, $hppSebelum);
                     $barang->save();
+
+                    $this->logHpp(
+                        tanggal: now()->toDateString(),
+                        barangId: $barang->id,
+                        qty: -$detail->qty,
+                        hargaBeli: (float) $detail->harga,
+                        hppLama: $hppLama,
+                        hppBaru: (float) $barang->harga_pokok,
+                        stokSebelum: $stokSebelum,
+                        stokSetelah: $barang->stok,
+                        sumberType: 'pembelian_destroy',
+                        sumberId: $pembelian->id,
+                        keterangan: 'Hapus pembelian ' . $pembelian->nomor,
+                    );
                 }
             }
             $pembelian->delete();
@@ -197,6 +263,34 @@ class PembelianController extends Controller
         return redirect()
             ->route('pembelian.index')
             ->with('success', 'Pembelian berhasil dihapus.');
+    }
+
+    private function logHpp(
+        $tanggal,
+        int $barangId,
+        int $qty,
+        float $hargaBeli,
+        float $hppLama,
+        float $hppBaru,
+        int $stokSebelum,
+        int $stokSetelah,
+        string $sumberType,
+        int $sumberId,
+        ?string $keterangan = null,
+    ): void {
+        BarangHppLog::create([
+            'tanggal' => $tanggal,
+            'barang_id' => $barangId,
+            'qty' => $qty,
+            'harga_beli' => $hargaBeli,
+            'hpp_lama' => $hppLama,
+            'hpp_baru' => $hppBaru,
+            'stok_sebelum' => $stokSebelum,
+            'stok_setelah' => $stokSetelah,
+            'sumber_type' => $sumberType,
+            'sumber_id' => $sumberId,
+            'keterangan' => $keterangan,
+        ]);
     }
 
     private function hitungHPPRataRata(
