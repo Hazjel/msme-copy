@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+.phpactor.cache
+.php-cs-fixer.cache
+.php-cs-fixer.dist.php
+package-lock.json
