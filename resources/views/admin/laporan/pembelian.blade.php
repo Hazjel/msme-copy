@@ -18,6 +18,17 @@
                     <label class="mr-2">Sampai</label>
                     <input type="date" name="end" value="{{ $end }}" class="form-control form-control-sm">
                 </div>
+                <div class="form-group mr-2">
+                    <label class="mr-2">Supplier</label>
+                    <select name="supplier_id" class="form-control form-control-sm">
+                        <option value="">Semua Supplier</option>
+                        @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" @selected($supplierId == $supplier->id)>
+                                {{ $supplier->nama }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <button class="btn btn-primary btn-sm mr-2">
                     <i class="fas fa-filter"></i> Filter
                 </button>
