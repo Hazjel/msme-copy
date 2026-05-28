@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaporanPembelianController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\ReturPembelianController;
@@ -14,9 +15,7 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::prefix('admin')->group(function () {
-    Route::get('/', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     // Pembelian (Grup 2)
     Route::resource('pembelian', PembelianController::class)
