@@ -113,7 +113,7 @@
 </button>
 
 <div class="mt-3">
-    <button type="submit" class="btn btn-primary">
+    <button type="submit" class="btn btn-primary" id="btnSubmitPembelian">
         <i class="fas fa-save"></i> Simpan
     </button>
     <a href="{{ route('pembelian.index') }}" class="btn btn-default">Batal</a>
@@ -149,7 +149,17 @@
                 grandTotalEl.textContent = formatRupiah(grand);
             }
 
-            tbody.addEventListener('input', recalc);
+            tbody.addEventListener('input', function(e) {
+                if (e.target.classList.contains('qty-input')) {
+                    const v = parseFloat(e.target.value);
+                    if (isNaN(v) || v < 1) e.target.value = 1;
+                }
+                if (e.target.classList.contains('harga-input')) {
+                    const v = parseFloat(e.target.value);
+                    if (isNaN(v) || v < 0) e.target.value = 0;
+                }
+                recalc();
+            });
             tbody.addEventListener('change', function(e) {
                 if (e.target.classList.contains('barang-select')) {
                     const opt = e.target.selectedOptions[0];
@@ -184,5 +194,40 @@
             });
 
         recalc();
+
+        const form = tbody.closest('form');
+        const btnSubmit = document.getElementById('btnSubmitPembelian');
+        if (form && btnSubmit) {
+            form.addEventListener('submit', function(e) {
+                const rows = tbody.querySelectorAll('tr');
+                if (rows.length === 0) {
+                    e.preventDefault();
+                    alert('Minimal harus ada 1 barang.');
+                    return;
+                }
+                for (const tr of rows) {
+                    const barang = tr.querySelector('.barang-select').value;
+                    const qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
+                    const harga = parseFloat(tr.querySelector('.harga-input').value) || 0;
+                    if (!barang) {
+                        e.preventDefault();
+                        alert('Pilih barang untuk semua baris.');
+                        return;
+                    }
+                    if (qty < 1) {
+                        e.preventDefault();
+                        alert('Qty harus minimal 1.');
+                        return;
+                    }
+                    if (harga < 0) {
+                        e.preventDefault();
+                        alert('Harga tidak boleh negatif.');
+                        return;
+                    }
+                }
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+            });
+        }
     })();
 </script>
