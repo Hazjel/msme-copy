@@ -39,6 +39,19 @@ class ReturPembelianController extends Controller
         if ($request->filled('pembelian_id')) {
             $pembelian = Pembelian::with(['supplier', 'details.barang'])
                 ->findOrFail($request->input('pembelian_id'));
+
+            $detailIds = $pembelian->details->pluck('id')->toArray();
+            $sudahDireturMap = ReturPembelianDetail::whereIn('pembelian_detail_id', $detailIds)
+                ->selectRaw('pembelian_detail_id, SUM(qty) as total_retur')
+                ->groupBy('pembelian_detail_id')
+                ->pluck('total_retur', 'pembelian_detail_id')
+                ->toArray();
+
+            foreach ($pembelian->details as $detail) {
+                $sudahRetur = (int) ($sudahDireturMap[$detail->id] ?? 0);
+                $detail->sudah_diretur = $sudahRetur;
+                $detail->sisa_retur = max(0, $detail->qty - $sudahRetur);
+            }
         }
 
         $pembelianOptions = Pembelian::with('supplier')

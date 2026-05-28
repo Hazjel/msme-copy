@@ -74,38 +74,49 @@
                     </div>
 
                     <h5>Pilih Barang yang Diretur</h5>
-                    <table class="table table-bordered">
+                    <table class="table table-bordered" id="returTable">
                         <thead class="thead-light">
                             <tr>
                                 <th style="width: 5%;"></th>
                                 <th>Barang</th>
-                                <th class="text-right" style="width: 12%;">Qty Beli</th>
-                                <th class="text-right" style="width: 15%;">Harga</th>
+                                <th class="text-right" style="width: 10%;">Qty Beli</th>
+                                <th class="text-right" style="width: 10%;">Sudah Diretur</th>
+                                <th class="text-right" style="width: 10%;">Sisa</th>
+                                <th class="text-right" style="width: 13%;">Harga</th>
                                 <th style="width: 15%;">Qty Retur</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($pembelian->details as $i => $detail)
-                                <tr>
+                                @php $habis = $detail->sisa_retur <= 0; @endphp
+                                <tr class="{{ $habis ? 'text-muted' : '' }}">
                                     <td class="text-center align-middle">
                                         <input type="hidden" name="items[{{ $i }}][pembelian_detail_id]"
                                             value="{{ $detail->id }}" disabled>
-                                        <input type="checkbox" class="retur-check">
+                                        <input type="checkbox" class="retur-check" {{ $habis ? 'disabled' : '' }}>
                                     </td>
                                     <td>{{ $detail->barang->kode }} - {{ $detail->barang->nama }}</td>
                                     <td class="text-right">{{ $detail->qty }}</td>
+                                    <td class="text-right">{{ $detail->sudah_diretur }}</td>
+                                    <td class="text-right">
+                                        @if ($habis)
+                                            <span class="badge badge-secondary">Habis</span>
+                                        @else
+                                            <span class="badge badge-success">{{ $detail->sisa_retur }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-right">Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
                                     <td>
                                         <input type="number" name="items[{{ $i }}][qty]"
                                             class="form-control form-control-sm qty-input" min="1"
-                                            max="{{ $detail->qty }}" value="1" disabled>
+                                            max="{{ $detail->sisa_retur }}" value="{{ min(1, $detail->sisa_retur) }}" disabled>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
 
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="btnSubmit">
                         <i class="fas fa-save"></i> Simpan Retur
                     </button>
                     <a href="{{ route('retur-pembelian.index') }}" class="btn btn-default">Batal</a>
@@ -117,8 +128,6 @@
 
 @section('js')
     <script>
-        // Disabled inputs are not submitted, so toggling `disabled` with the checkbox
-        // is enough — no need to remove/restore name attributes.
         document.querySelectorAll('.retur-check').forEach(function(cb) {
             cb.addEventListener('change', function() {
                 const row = this.closest('tr');
@@ -126,5 +135,30 @@
                 row.querySelector('input[type="hidden"]').disabled = !this.checked;
             });
         });
+
+        document.querySelectorAll('.qty-input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                const max = parseInt(this.getAttribute('max')) || 1;
+                let v = parseInt(this.value);
+                if (isNaN(v) || v < 1) v = 1;
+                if (v > max) v = max;
+                this.value = v;
+            });
+        });
+
+        const form = document.querySelector('form[action*="retur-pembelian"]');
+        const btnSubmit = document.getElementById('btnSubmit');
+        if (form && btnSubmit) {
+            form.addEventListener('submit', function(e) {
+                const checked = document.querySelectorAll('.retur-check:checked').length;
+                if (checked === 0) {
+                    e.preventDefault();
+                    alert('Pilih minimal 1 barang yang akan diretur.');
+                    return;
+                }
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+            });
+        }
     </script>
 @stop
