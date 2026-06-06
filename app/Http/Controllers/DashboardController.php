@@ -15,9 +15,13 @@ class DashboardController extends Controller
 
         $totalPembelianBulanIni = Pembelian::whereBetween('tanggal', [$startMonth, $endMonth])->sum('total');
         $jumlahPembelianBulanIni = Pembelian::whereBetween('tanggal', [$startMonth, $endMonth])->count();
+        $totalPembelianAllTime = Pembelian::sum('total');
+        $jumlahPembelianAllTime = Pembelian::count();
 
         $totalReturBulanIni = ReturPembelian::whereBetween('tanggal', [$startMonth, $endMonth])->sum('total');
         $jumlahReturBulanIni = ReturPembelian::whereBetween('tanggal', [$startMonth, $endMonth])->count();
+        $totalReturAllTime = ReturPembelian::sum('total');
+        $jumlahReturAllTime = ReturPembelian::count();
 
         $pembelianTerakhir = Pembelian::with('supplier')
             ->orderByDesc('tanggal')
@@ -34,8 +38,12 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact(
             'totalPembelianBulanIni',
             'jumlahPembelianBulanIni',
+            'totalPembelianAllTime',
+            'jumlahPembelianAllTime',
             'totalReturBulanIni',
             'jumlahReturBulanIni',
+            'totalReturAllTime',
+            'jumlahReturAllTime',
             'pembelianTerakhir',
             'returTerakhir'
         ));

@@ -80,20 +80,23 @@ class LaporanApiController extends Controller
         $start = now()->startOfMonth();
         $end = now()->endOfMonth();
 
-        $totalPembelian = Pembelian::whereBetween('tanggal', [$start, $end])->sum('total');
-        $jumlahPembelian = Pembelian::whereBetween('tanggal', [$start, $end])->count();
-        $totalRetur = ReturPembelian::whereBetween('tanggal', [$start, $end])->sum('total');
-        $jumlahRetur = ReturPembelian::whereBetween('tanggal', [$start, $end])->count();
-
         return response()->json([
             'periode' => [
                 'start' => $start->toDateString(),
                 'end' => $end->toDateString(),
             ],
-            'total_pembelian' => (float) $totalPembelian,
-            'jumlah_pembelian' => $jumlahPembelian,
-            'total_retur' => (float) $totalRetur,
-            'jumlah_retur' => $jumlahRetur,
+            'bulan_ini' => [
+                'total_pembelian' => (float) Pembelian::whereBetween('tanggal', [$start, $end])->sum('total'),
+                'jumlah_pembelian' => Pembelian::whereBetween('tanggal', [$start, $end])->count(),
+                'total_retur' => (float) ReturPembelian::whereBetween('tanggal', [$start, $end])->sum('total'),
+                'jumlah_retur' => ReturPembelian::whereBetween('tanggal', [$start, $end])->count(),
+            ],
+            'all_time' => [
+                'total_pembelian' => (float) Pembelian::sum('total'),
+                'jumlah_pembelian' => Pembelian::count(),
+                'total_retur' => (float) ReturPembelian::sum('total'),
+                'jumlah_retur' => ReturPembelian::count(),
+            ],
         ]);
     }
 }

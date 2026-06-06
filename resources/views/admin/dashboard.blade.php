@@ -4,10 +4,10 @@
 
 @section('content_header')
     <h1>Dashboard</h1>
-    <small class="text-muted">Ringkasan bulan {{ now()->translatedFormat('F Y') }}</small>
 @stop
 
 @section('content')
+    <h5 class="mb-2">Bulan {{ now()->translatedFormat('F Y') }}</h5>
     <div class="row">
         <div class="col-lg-3 col-6">
             <div class="small-box bg-info">
@@ -66,6 +66,57 @@
                 <a href="{{ route('retur-pembelian.index') }}" class="small-box-footer">
                     Lihat data <i class="fas fa-arrow-circle-right"></i>
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <h5 class="mt-3 mb-2">Keseluruhan</h5>
+    <div class="row">
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>Rp {{ number_format($totalPembelianAllTime, 0, ',', '.') }}</h3>
+                    <p>Total Pembelian (semua)</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-truck"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>{{ $jumlahPembelianAllTime }}</h3>
+                    <p>Jumlah Pembelian (semua)</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>Rp {{ number_format($totalReturAllTime, 0, ',', '.') }}</h3>
+                    <p>Total Retur (semua)</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>{{ $jumlahReturAllTime }}</h3>
+                    <p>Jumlah Retur (semua)</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-undo"></i>
+                </div>
             </div>
         </div>
     </div>
