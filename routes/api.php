@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\LaporanApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
 use App\Http\Controllers\Api\PembelianApiController;
 use App\Http\Controllers\Api\ReturPembelianApiController;
+use App\Http\Controllers\Api\StokInputApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->group(function () {
@@ -24,4 +25,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('dashboard', [LaporanApiController::class, 'dashboard'])->name('dashboard');
     Route::get('laporan/pembelian', [LaporanApiController::class, 'pembelian'])->name('laporan.pembelian');
     Route::get('laporan/retur-pembelian', [LaporanApiController::class, 'returPembelian'])->name('laporan.retur-pembelian');
+
+    // Stok Input (Kelompok 2 — untuk mobile Logistik)
+    Route::apiResource('stok-input', StokInputApiController::class)->only(['index', 'show', 'store']);
 });
